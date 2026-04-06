@@ -2,15 +2,15 @@ import logging
 import re
 from typing import Optional
 
-from config import (
+from .config import (
     SYSTEM_PROMPT_TEMPLATE,
     MEMORY_QUERY_PATTERN,
     MEMORY_WRITE_PATTERN,
     MEMORY_EMPTY_PATTERN,
     CONTEXT_LIMIT_TOKENS,
 )
-from db_handler import query, upsert, delete, get_all_memory
-from llama_client import call_llama_api_with_retry
+from .db_handler import query, upsert, delete, get_all_memory
+from .llama_client import call_llama_api_with_retry
 
 logger = logging.getLogger(__name__)
 

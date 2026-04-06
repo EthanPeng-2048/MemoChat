@@ -3,7 +3,7 @@ from typing import Optional
 
 import requests
 
-from config import (
+from .config import (
     LLAMA_API_URL,
     LLAMA_API_KEY,
     LLAMA_TIMEOUT,

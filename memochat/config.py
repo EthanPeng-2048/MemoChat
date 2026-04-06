@@ -15,7 +15,7 @@ ALLOWED_CATEGORIES: Final[list[str]] = [
 
 CONTEXT_LIMIT_TOKENS: Final[int] = 4096
 
-DB_PATH: Final[str] = os.getenv("DB_PATH", "memchat.db")
+DB_PATH: Final[str] = os.getenv("DB_PATH", "memochat.db")
 
 LLAMA_API_URL: Final[str] = os.getenv("LLAMA_API_URL", "http://localhost:8080/v1/chat/completions")
 

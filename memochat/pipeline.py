@@ -1,9 +1,9 @@
 import logging
 from typing import Optional
 
-from config import LOG_LEVEL
-from db_handler import init_db
-from memory_router import route_memory
+from .config import LOG_LEVEL
+from .db_handler import init_db
+from .memory_router import route_memory
 
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),

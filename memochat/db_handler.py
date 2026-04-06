@@ -2,7 +2,7 @@ import logging
 import sqlite3
 from typing import Optional
 
-from config import DB_PATH, ALLOWED_CATEGORIES
+from .config import DB_PATH, ALLOWED_CATEGORIES
 
 logger = logging.getLogger(__name__)
 
