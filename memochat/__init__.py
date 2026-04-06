@@ -33,8 +33,8 @@ from .memory_router import (
     inject_memory_context,
 )
 from .pipeline import MemoryPipeline, run_interactive_pipeline, run_single_query
+from .version import __version__
 
-__version__ = "0.1.0"
 __all__ = [
     "ALLOWED_CATEGORIES",
     "CONTEXT_LIMIT_TOKENS",
@@ -68,4 +68,5 @@ __all__ = [
     "MemoryPipeline",
     "run_interactive_pipeline",
     "run_single_query",
+    "__version__",
 ]

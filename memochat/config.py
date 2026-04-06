@@ -8,7 +8,7 @@ load_dotenv()
 ALLOWED_CATEGORIES: Final[list[str]] = [
     "user_preference",
     "conversation_history",
-    " factual_knowledge",
+    "factual_knowledge",
     "task_context",
     "personal_info"
 ]
