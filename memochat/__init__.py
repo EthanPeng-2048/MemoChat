@@ -108,7 +108,7 @@ class MemoChat:
             "content": user_input,
         })
         
-        response, results, needs_secondary = route_memory(
+        response, results = route_memory(
             user_input,
             self.conversation_history[:-1],
             api_url=self.api_url,
@@ -119,9 +119,6 @@ class MemoChat:
         if response is None:
             self.logger.error("Failed to get response from memory router")
             return "Error: Failed to get response from AI"
-        
-        if needs_secondary:
-            self.logger.info("Secondary generation completed")
         
         for result in results:
             if result["type"] == "write":

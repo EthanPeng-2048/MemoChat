@@ -14,6 +14,11 @@ from .llama_client import call_llama_api_with_retry
 
 logger = logging.getLogger(__name__)
 
+# 预编译的正则表达式模式，避免重复编译的性能开销
+QUERY_PATTERN = re.compile(MEMORY_QUERY_PATTERN, re.DOTALL)
+WRITE_PATTERN = re.compile(MEMORY_WRITE_PATTERN, re.DOTALL)
+EMPTY_PATTERN = re.compile(MEMORY_EMPTY_PATTERN, re.DOTALL)
+
 
 def estimate_token_count(text: str) -> int:
     return len(text) // 4
@@ -43,8 +48,7 @@ def build_context_prompt(user_input: str, history: list[dict]) -> str:
 def parse_memory_markers(response: str) -> list[dict]:
     markers = []
     
-    query_pattern = re.compile(MEMORY_QUERY_PATTERN, re.DOTALL)
-    for match in query_pattern.finditer(response):
+    for match in QUERY_PATTERN.finditer(response):
         category = match.group(1).strip()
         key = match.group(2).strip()
         markers.append({
@@ -54,8 +58,7 @@ def parse_memory_markers(response: str) -> list[dict]:
             "full_match": match.group(0),
         })
     
-    write_pattern = re.compile(MEMORY_WRITE_PATTERN, re.DOTALL)
-    for match in write_pattern.finditer(response):
+    for match in WRITE_PATTERN.finditer(response):
         category = match.group(1).strip()
         key = match.group(2).strip()
         value = match.group(3).strip()
@@ -67,8 +70,7 @@ def parse_memory_markers(response: str) -> list[dict]:
             "full_match": match.group(0),
         })
     
-    empty_pattern = re.compile(MEMORY_EMPTY_PATTERN, re.DOTALL)
-    for match in empty_pattern.finditer(response):
+    for match in EMPTY_PATTERN.finditer(response):
         category = match.group(1).strip()
         key = match.group(2).strip()
         markers.append({
@@ -137,13 +139,116 @@ def process_memory_markers(markers: list[dict]) -> tuple[str, list[dict]]:
     return "\n".join(output_parts), results
 
 
+def extract_first_marker(response: str) -> Optional[dict]:
+    """从 AI 响应中提取第一个工具调用标记
+    
+    Args:
+        response: AI 的响应文本
+        
+    Returns:
+        第一个匹配的工具标记，如果没有则返回 None
+    """
+    logger.debug(f"正在解析 AI 响应：{response[:200]}")
+    
+    matches = []
+    
+    for match in QUERY_PATTERN.finditer(response):
+        logger.debug(f"找到 QUERY 标记：{match.group(0)}")
+        matches.append({
+            "type": "query",
+            "category": match.group(1).strip(),
+            "key": match.group(2).strip(),
+            "full_match": match.group(0),
+            "position": match.start(),
+        })
+    
+    for match in WRITE_PATTERN.finditer(response):
+        logger.debug(f"找到 WRITE 标记：{match.group(0)}")
+        matches.append({
+            "type": "write",
+            "category": match.group(1).strip(),
+            "key": match.group(2).strip(),
+            "value": match.group(3).strip(),
+            "full_match": match.group(0),
+            "position": match.start(),
+        })
+    
+    for match in EMPTY_PATTERN.finditer(response):
+        logger.debug(f"找到 EMPTY 标记：{match.group(0)}")
+        matches.append({
+            "type": "empty",
+            "category": match.group(1).strip(),
+            "key": match.group(2).strip(),
+            "full_match": match.group(0),
+            "position": match.start(),
+        })
+    
+    if not matches:
+        logger.warning(f"未找到任何工具标记，响应内容：{response[:200]}")
+        return None
+    
+    matches.sort(key=lambda x: x["position"])
+    first_match = matches[0]
+    logger.debug(f"返回第一个工具标记：type={first_match['type']}, category={first_match['category']}, key={first_match['key']}")
+    return first_match
+
+
+def execute_tool(marker: dict) -> str:
+    """执行单个工具调用并返回结果
+    
+    Args:
+        marker: 工具标记字典
+        
+    Returns:
+        工具执行结果的文本描述
+    """
+    if marker["type"] == "query":
+        value = query(marker["category"], marker["key"])
+        if value is not None:
+            return f"工具执行结果：查询成功 - category={marker['category']}, key={marker['key']}, value={value}"
+        else:
+            return f"工具执行结果：查询结果为空 - category={marker['category']}, key={marker['key']}"
+    
+    elif marker["type"] == "write":
+        success = upsert(marker["category"], marker["key"], marker["value"])
+        if success:
+            return f"工具执行结果：写入成功 - category={marker['category']}, key={marker['key']}, value={marker['value']}"
+        else:
+            return f"工具执行结果：写入失败 - category={marker['category']}, key={marker['key']}"
+    
+    elif marker["type"] == "empty":
+        return f"工具执行结果：空记忆标记 - category={marker['category']}, key={marker['key']}"
+    
+    return "工具执行结果：未知工具类型"
+
+
 def route_memory(
     user_input: str,
     history: list[dict],
     api_url: Optional[str] = None,
     api_key: Optional[str] = None,
     model: Optional[str] = None,
-) -> tuple[Optional[str], list[dict], bool]:
+) -> tuple[Optional[str], list[dict]]:
+    """处理用户输入，循环调用工具直到 AI 不再调用工具
+    
+    流程：
+    1. 用户输入
+    2. AI 返回工具调用（每次只调用一个工具）
+    3. 系统执行工具并返回结果（包含用户输入）
+    4. AI 根据结果决定是否继续调用工具
+    5. 重复步骤 3-4 直到 AI 不再调用工具
+    6. AI 返回最终回答
+    
+    Args:
+        user_input: 用户输入
+        history: 对话历史
+        api_url: Llama API URL
+        api_key: API 密钥
+        model: 模型名称
+        
+    Returns:
+        tuple: (AI 最终回复，工具执行结果列表)
+    """
     context_prompt = build_context_prompt(user_input, history)
     
     messages = [
@@ -151,42 +256,69 @@ def route_memory(
         {"role": "user", "content": context_prompt},
     ]
     
-    response = call_llama_api_with_retry(messages, api_url=api_url, api_key=api_key, model=model)
+    all_results = []
+    tool_call_history = []
+    max_iterations = 10
+    iteration = 0
     
-    if response is None:
-        logger.error("Failed to get response from Llama API")
-        return None, [], False
-    
-    markers = parse_memory_markers(response)
-    
-    if not markers:
-        logger.info("No memory markers found in response")
-        return response, [], False
-    
-    output, results = process_memory_markers(markers)
-    
-    if any(m["type"] in ("query", "empty") for m in markers):
-        logger.info("Memory queries or empty results detected, performing secondary generation")
+    while iteration < max_iterations:
+        iteration += 1
+        logger.debug(f"第 {iteration} 次 AI 调用")
         
-        augmented_prompt = (
-            f"{context_prompt}\n\n"
-            f"已处理的记忆操作结果:\n{output}"
+        response = call_llama_api_with_retry(messages, api_url=api_url, api_key=api_key, model=model)
+        
+        if response is None:
+            logger.error("Failed to get response from Llama API")
+            return None, all_results
+        
+        marker = extract_first_marker(response)
+        
+        if marker is None:
+            logger.info("AI 未调用工具，返回最终回答")
+            return response, all_results
+        
+        logger.info(f"检测到工具调用：type={marker['type']}, category={marker['category']}, key={marker['key']}")
+        
+        tool_result = execute_tool(marker)
+        logger.info(f"工具执行结果：{tool_result}")
+        
+        all_results.append({
+            "type": marker["type"],
+            "category": marker["category"],
+            "key": marker["key"],
+            "result": tool_result,
+        })
+        
+        tool_call_history.append({
+            "iteration": iteration,
+            "type": marker["type"],
+            "category": marker["category"],
+            "key": marker["key"],
+            "result": tool_result,
+        })
+        
+        history_text = "\n\n".join([
+            f"第 {call['iteration']} 次工具调用:\n"
+            f"  类型：{call['type']}\n"
+            f"  分类：{call['category']}\n"
+            f"  键：{call['key']}\n"
+            f"  结果：{call['result']}"
+            for call in tool_call_history
+        ])
+        
+        new_user_content = (
+            f"用户输入：{user_input}\n\n"
+            f"工具调用历史:\n{history_text}\n\n"
+            f"请继续处理或给出最终回答。"
         )
         
-        secondary_messages = [
+        messages = [
             {"role": "system", "content": SYSTEM_PROMPT_TEMPLATE},
-            {"role": "user", "content": augmented_prompt},
+            {"role": "user", "content": new_user_content},
         ]
-        
-        final_response = call_llama_api_with_retry(secondary_messages, api_url=api_url, api_key=api_key, model=model)
-        
-        if final_response is None:
-            logger.error("Failed to get secondary response from Llama API")
-            return response, results, True
-        
-        return final_response, results, True
     
-    return response, results, False
+    logger.warning(f"达到最大迭代次数 {max_iterations}，终止工具调用")
+    return "达到最大工具调用次数限制", all_results
 
 
 def inject_memory_context(prompt: str, history: list[dict]) -> str:

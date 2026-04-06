@@ -27,7 +27,7 @@ class MemoryPipeline:
             "content": user_input,
         })
         
-        response, results, needs_secondary = route_memory(
+        response, results = route_memory(
             user_input,
             self.conversation_history[:-1],
         )
@@ -35,9 +35,6 @@ class MemoryPipeline:
         if response is None:
             logger.error("Failed to get response from memory router")
             return None
-        
-        if needs_secondary:
-            logger.info("Secondary generation completed")
         
         for result in results:
             if result["type"] == "write":

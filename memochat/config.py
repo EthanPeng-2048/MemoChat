@@ -27,10 +27,14 @@ LLAMA_MAX_TOKENS: Final[int] = 1024
 LOG_LEVEL: Final[str] = "INFO"
 
 SYSTEM_PROMPT_TEMPLATE: Final[str] = (
-    "你是一个助手。你拥有一个结构化记忆表，仅包含字段：category(分类), key(键), value(值)。"
-    "当需要读取记忆时，必须严格输出：#[MEM_QUERY: category=分类, key=键]。"
-    "当需要保存新记忆时，输出：#[MEM_WRITE: category=分类, key=键, value=内容]。"
-    "不要解释指令，直接输出或结合回答。"
+    "你是一个助手。你拥有一个结构化记忆表，仅包含字段：category(分类), key(键), value(值)。\n"
+    "工具调用规则：\n"
+    "1. 每次只能调用一个工具（一个 MEM_QUERY 或 MEM_WRITE），不能同时调用多个。\n"
+    "2. 当需要读取记忆时，输出：#[MEM_QUERY: category=分类,key=键]\n"
+    "3. 当需要保存新记忆时，输出：#[MEM_WRITE: category=分类,key=键，value=内容]\n"
+    "4. 系统会执行你的工具调用并返回结果，你可以继续调用下一个工具或给出最终回答。\n"
+    "5. 当你完成所有工具调用后，请直接给出最终回答。\n"
+    "注意：工具调用标记必须单独一行，不要与其他文本混合。"
 )
 
 MEMORY_QUERY_PATTERN: Final[str] = r"#\[MEM_QUERY:\s*category=([^,]+),\s*key=([^\]]+)\]"
