@@ -6,6 +6,7 @@ import requests
 from .config import (
     LLAMA_API_URL,
     LLAMA_API_KEY,
+    LLAMA_MODEL,
     LLAMA_TIMEOUT,
     LLAMA_TEMPERATURE,
     LLAMA_MAX_TOKENS,
@@ -18,6 +19,7 @@ def call_llama_api(
     messages: list[dict[str, str]],
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
+    model: Optional[str] = None,
 ) -> Optional[str]:
     url = LLAMA_API_URL
     payload = {
@@ -26,6 +28,10 @@ def call_llama_api(
         "max_tokens": max_tokens if max_tokens is not None else LLAMA_MAX_TOKENS,
         "stream": False,
     }
+    
+    if model or LLAMA_MODEL:
+        payload["model"] = model if model else LLAMA_MODEL
+        logger.debug(f"Using model: {payload['model']}")
     
     logger.debug(f"Calling Llama API: {url}")
     logger.debug(f"Payload: {payload}")

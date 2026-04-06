@@ -21,6 +21,8 @@ LLAMA_API_URL: Final[str] = os.getenv("LLAMA_API_URL", "http://localhost:8080/v1
 
 LLAMA_API_KEY: Final[str] = os.getenv("LLAMA_API_KEY", "")
 
+LLAMA_MODEL: Final[str] = os.getenv("LLAMA_MODEL", "")
+
 LLAMA_TIMEOUT: Final[int] = int(os.getenv("LLAMA_TIMEOUT", "120"))
 
 LLAMA_TEMPERATURE: Final[float] = float(os.getenv("LLAMA_TEMPERATURE", "0.7"))
