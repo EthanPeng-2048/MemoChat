@@ -1,9 +1,4 @@
-import os
 from typing import Final
-
-from dotenv import load_dotenv
-
-load_dotenv()
 
 ALLOWED_CATEGORIES: Final[list[str]] = [
     "user_preference",
@@ -15,21 +10,21 @@ ALLOWED_CATEGORIES: Final[list[str]] = [
 
 CONTEXT_LIMIT_TOKENS: Final[int] = 4096
 
-DB_PATH: Final[str] = os.getenv("DB_PATH", "memochat.db")
+DB_PATH: Final[str] = "memochat.db"
 
-LLAMA_API_URL: Final[str] = os.getenv("LLAMA_API_URL", "http://localhost:8080/v1/chat/completions")
+LLAMA_API_URL: Final[str] = "http://localhost:8080/v1/chat/completions"
 
-LLAMA_API_KEY: Final[str] = os.getenv("LLAMA_API_KEY", "")
+LLAMA_API_KEY: Final[str] = ""
 
-LLAMA_MODEL: Final[str] = os.getenv("LLAMA_MODEL", "")
+LLAMA_MODEL: Final[str] = ""
 
-LLAMA_TIMEOUT: Final[int] = int(os.getenv("LLAMA_TIMEOUT", "120"))
+LLAMA_TIMEOUT: Final[int] = 120
 
-LLAMA_TEMPERATURE: Final[float] = float(os.getenv("LLAMA_TEMPERATURE", "0.7"))
+LLAMA_TEMPERATURE: Final[float] = 0.7
 
-LLAMA_MAX_TOKENS: Final[int] = int(os.getenv("LLAMA_MAX_TOKENS", "1024"))
+LLAMA_MAX_TOKENS: Final[int] = 1024
 
-LOG_LEVEL: Final[str] = os.getenv("LOG_LEVEL", "INFO")
+LOG_LEVEL: Final[str] = "INFO"
 
 SYSTEM_PROMPT_TEMPLATE: Final[str] = (
     "你是一个助手。你拥有一个结构化记忆表，仅包含字段：category(分类), key(键), value(值)。"

@@ -10,7 +10,7 @@ import logging
 import argparse
 import sys
 
-from memochat import LOG_LEVEL, run_interactive_pipeline, run_single_query
+from memochat import MemoChat, LOG_LEVEL
 
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
@@ -36,6 +36,26 @@ def main() -> int:
         action="store_true",
         help="Enable verbose/debug logging",
     )
+    parser.add_argument(
+        "--api-url",
+        type=str,
+        help="Llama API URL",
+    )
+    parser.add_argument(
+        "--api-key",
+        type=str,
+        help="Llama API Key",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        help="Model name",
+    )
+    parser.add_argument(
+        "--db-path",
+        type=str,
+        help="Database path",
+    )
     
     args = parser.parse_args()
     
@@ -43,7 +63,13 @@ def main() -> int:
         logging.getLogger().setLevel(logging.DEBUG)
     
     if args.input:
-        result = run_single_query(args.input)
+        memo = MemoChat(
+            api_url=args.api_url,
+            api_key=args.api_key,
+            model=args.model,
+            db_path=args.db_path,
+        )
+        result = memo.chat(args.input)
         if result:
             print(result)
             return 0
@@ -51,7 +77,42 @@ def main() -> int:
             print("Error: Failed to process input", file=sys.stderr)
             return 1
     else:
-        run_interactive_pipeline()
+        memo = MemoChat(
+            api_url=args.api_url,
+            api_key=args.api_key,
+            model=args.model,
+            db_path=args.db_path,
+        )
+        print("MemoChat initialized. Type 'quit' to exit.")
+        
+        while True:
+            try:
+                user_input = input("\nUser: ").strip()
+                
+                if not user_input:
+                    continue
+                
+                if user_input.lower() in ("quit", "exit", "q"):
+                    print("Exiting...")
+                    break
+                
+                if user_input.lower() == "reset":
+                    memo.reset()
+                    print("Conversation history reset.")
+                    continue
+                
+                response = memo.chat(user_input)
+                
+                if response:
+                    print(f"\nAssistant: {response}")
+                else:
+                    print("\nAssistant: Sorry, I encountered an error processing your request.")
+                    
+            except KeyboardInterrupt:
+                print("\nInterrupted. Type 'quit' to exit gracefully.")
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}", exc_info=True)
+        
         return 0
 
 

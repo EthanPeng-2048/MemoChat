@@ -20,8 +20,10 @@ def call_llama_api(
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
     model: Optional[str] = None,
+    api_url: Optional[str] = None,
+    api_key: Optional[str] = None,
 ) -> Optional[str]:
-    url = LLAMA_API_URL
+    url = api_url if api_url else LLAMA_API_URL
     payload = {
         "messages": messages,
         "temperature": temperature if temperature is not None else LLAMA_TEMPERATURE,
@@ -37,8 +39,9 @@ def call_llama_api(
     logger.debug(f"Payload: {payload}")
     
     headers = {}
-    if LLAMA_API_KEY:
-        headers["Authorization"] = f"Bearer {LLAMA_API_KEY}"
+    key = api_key if api_key else LLAMA_API_KEY
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
         logger.debug("API key found, adding Authorization header")
     
     try:
@@ -64,9 +67,12 @@ def call_llama_api_with_retry(
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
     max_retries: int = 3,
+    api_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    model: Optional[str] = None,
 ) -> Optional[str]:
     for attempt in range(max_retries):
-        result = call_llama_api(messages, temperature, max_tokens)
+        result = call_llama_api(messages, temperature, max_tokens, model=model, api_url=api_url, api_key=api_key)
         if result is not None:
             return result
         if attempt < max_retries - 1:

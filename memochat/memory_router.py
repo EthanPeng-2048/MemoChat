@@ -140,6 +140,9 @@ def process_memory_markers(markers: list[dict]) -> tuple[str, list[dict]]:
 def route_memory(
     user_input: str,
     history: list[dict],
+    api_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    model: Optional[str] = None,
 ) -> tuple[Optional[str], list[dict], bool]:
     context_prompt = build_context_prompt(user_input, history)
     
@@ -148,7 +151,7 @@ def route_memory(
         {"role": "user", "content": context_prompt},
     ]
     
-    response = call_llama_api_with_retry(messages)
+    response = call_llama_api_with_retry(messages, api_url=api_url, api_key=api_key, model=model)
     
     if response is None:
         logger.error("Failed to get response from Llama API")
@@ -175,7 +178,7 @@ def route_memory(
             {"role": "user", "content": augmented_prompt},
         ]
         
-        final_response = call_llama_api_with_retry(secondary_messages)
+        final_response = call_llama_api_with_retry(secondary_messages, api_url=api_url, api_key=api_key, model=model)
         
         if final_response is None:
             logger.error("Failed to get secondary response from Llama API")

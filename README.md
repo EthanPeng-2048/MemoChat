@@ -8,24 +8,23 @@ A modular local AI memory routing system that can interface with llama.cpp serve
 - **Memory Markers Protocol**: Use `#[MEM_QUERY: category=X, key=Y]` and `#[MEM_WRITE: ...]` for AI interaction
 - **SQLite with WAL Mode**: Persistent storage with concurrent access support
 - **Llama.cpp Compatibility**: Direct integration with llama.cpp server API
-- **Configurable**: Environment-based configuration for API keys, timeouts, and more
+- **Simple API**: Easy-to-use `MemoChat` class with `.chat()` method
 
 ## Project Structure
 
 ```
 MemoChat/
 ├── memochat/              # Main package
-│   ├── __init__.py       # Package exports
+│   ├── __init__.py       # Package exports (includes MemoChat class)
 │   ├── config.py         # Configuration
 │   ├── db_handler.py     # Database operations
 │   ├── llama_client.py   # Llama API client
 │   ├── memory_router.py  # Memory routing logic
-│   └── pipeline.py       # Main pipeline
+│   └── version.py        # Version info
 ├── tests/                # Test files
 ├── main.py               # Entry point
 ├── requirements.txt      # Dependencies
 ├── pyproject.toml        # Project metadata
-├── .env.example          # Environment template
 └── README.md
 ```
 
@@ -43,40 +42,60 @@ python -m venv .venv
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Copy environment template
-cp .env.example .env
-# Edit .env with your configuration
 ```
 
 ## Usage
+
+### Python API (Recommended)
+
+```python
+from memochat import MemoChat
+
+# Initialize with custom settings
+memo = MemoChat(
+    api_url="http://localhost:8080/v1/chat/completions",
+    api_key="your_api_key_here",
+    model="GLM-5",
+    db_path="memochat.db",
+    log_level="INFO",
+)
+
+# Chat
+response = memo.chat("你好！")
+
+# Get conversation history
+history = memo.get_history()
+
+# Get all memories
+memories = memo.get_memory()
+
+# Reset conversation
+memo.reset()
+```
 
 ### Command Line
 
 ```bash
 # Interactive mode
-python main.py
+python main.py --api-url "http://localhost:8080/v1/chat/completions" --api-key "your_key" --model "GLM-5" --db-path "memochat.db"
 
 # Single query
-python main.py -i "Your question here"
+python main.py -i "Your question here" --api-url "http://localhost:8080/v1/chat/completions" --api-key "your_key" --model "GLM-5" --db-path "memochat.db"
 
 # Verbose mode
-python main.py -i "Your question" -v
+python main.py -i "Your question" -v --api-key "your_key"
 ```
 
-### Python API
+### Command Line Arguments
 
-```python
-from memochat import MemoryPipeline, run_single_query
-
-# Single query
-result = run_single_query("What is my name?")
-
-# Using pipeline
-pipeline = MemoryPipeline()
-response = pipeline.process_input("Hello!")
-history = pipeline.get_history()
-```
+| Argument | Short | Description |
+|----------|-------|-------------|
+| `--input` | `-i` | Single input query to process |
+| `--verbose` | `-v` | Enable verbose/debug logging |
+| `--api-url` | | Llama API URL (default: http://localhost:8080/v1/chat/completions) |
+| `--api-key` | | Llama API Key |
+| `--model` | | Model name |
+| `--db-path` | | Database path (default: memochat.db) |
 
 ## AI Interaction Protocol
 
@@ -88,17 +107,18 @@ The system uses special markers for AI communication:
 
 ## Configuration
 
-Edit `.env` file:
+Configuration is done through command line arguments or the Python API. Default values:
 
-```env
-DB_PATH=memochat.db
-LLAMA_API_URL=http://localhost:8080/v1/chat/completions
-LLAMA_API_KEY=your_api_key_here
-LLAMA_TIMEOUT=120
-LLAMA_TEMPERATURE=0.7
-LLAMA_MAX_TOKENS=1024
-LOG_LEVEL=INFO
-```
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `api_url` | `http://localhost:8080/v1/chat/completions` | Llama API URL |
+| `api_key` | (empty) | API key for authentication |
+| `model` | (empty) | Model name to use |
+| `db_path` | `memochat.db` | Database file path |
+| `temperature` | `0.7` | AI temperature parameter |
+| `max_tokens` | `1024` | Maximum tokens to generate |
+| `timeout` | `120` | API timeout in seconds |
+| `log_level` | `INFO` | Logging level |
 
 ## License
 
