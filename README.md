@@ -122,4 +122,4 @@ Configuration is done through command line arguments or the Python API. Default 
 
 ## License
 
-MIT
+LGPL-3.0
